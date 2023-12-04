@@ -22,13 +22,53 @@ lazy_static! {
 fn main() {
     let input: String = fs::read_to_string("input.txt").expect("Impossible de lire le fichier");
     let games = extract_games(input);
-    println!("{:#?}", &games);
     let result: i32 = games
         .iter()
         .filter(|game| !is_game_impossible(game))
         .map(|game| game.id)
         .sum();
     println!("Somme des ids des parties possibles : {:?}", &result);
+    let games_with_flat_sets = flatten_game_sets(games);
+    let total_power = compute_total_power(games_with_flat_sets);
+    println!("Pouvoir total :{:?}", total_power);
+}
+
+fn compute_total_power(games_with_flat_sets: Vec<Vec<(String, i32)>>) -> i32 {
+    let total_power: i32 = games_with_flat_sets
+        .iter()
+        .map(|game| compute_game_power(game))
+        .sum();
+    total_power
+}
+
+fn compute_game_power(game: &Vec<(String, i32)>) -> i32 {
+    QUANTITY_OF_CUBES_BY_COLOR
+        .iter()
+        .map(|quantity_color| max_for_color(game, quantity_color))
+        .filter(Option::is_some)
+        .map(Option::unwrap)
+        .reduce(|power, max_cube| power * max_cube)
+        .expect("Impmossible de calclure le 'power' pour cette partie.")
+}
+
+fn max_for_color(game: &Vec<(String, i32)>, quantity_color: (&String, &i32)) -> Option<i32> {
+    game.iter()
+        .filter(|cube| cube.0.eq(quantity_color.0))
+        .map(|cube| cube.1)
+        .max()
+}
+
+fn flatten_game_sets(games: Vec<Game>) -> Vec<Vec<(String, i32)>> {
+    let games_with_flat_sets: Vec<Vec<(String, i32)>> = games
+        .into_iter()
+        .map(|game| {
+            game.sets
+                .into_iter()
+                .flat_map(|set| set)
+                .collect::<Vec<(String, i32)>>()
+        })
+        .collect();
+    games_with_flat_sets
 }
 
 fn is_game_impossible(game: &&Game) -> bool {
